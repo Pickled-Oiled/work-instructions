@@ -1,0 +1,46 @@
+{
+  "stations": [
+    {
+      "name": "Forklift",
+      "documents": [
+        {
+          "id": "wi-1042",
+          "title": "Torque Sequence — Front Housing",
+          "subtitle": "Pre-shift check",
+          "rev": "Rev C",
+          "url": "docs/wi-1042.pdf"
+        }
+      ]
+    },
+    {
+      "name": "Assembly",
+      "documents": [
+        {
+          "id": "wi-2210",
+          "title": "Harness Routing and Clip Install",
+          "subtitle": "Station D",
+          "rev": "Rev A",
+          "url": "docs/wi-2210.pdf"
+        },
+        {
+          "id": "wi-3300",
+          "title": "Final Assembly and Pack-Out",
+          "subtitle": "Cell 5",
+          "rev": "Rev B",
+          "url": "docs/wi-3300.pdf"
+        }
+      ]
+    },
+    {
+      "name": "Packaging / Shipping",
+      "documents": [
+        {
+          "id": "sop-0075",
+          "title": "Line Changeover Checklist",
+          "rev": "Rev F",
+          "url": "docs/sop-0075.pdf"
+        }
+      ]
+    }
+  ]
+}

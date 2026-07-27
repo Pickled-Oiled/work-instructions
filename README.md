@@ -15,28 +15,45 @@ folder, open the URL on the glasses.
 
 ## Adding your documents
 
+The app opens on a list of work stations; selecting one lists that station's instructions.
 Drop PDFs in `docs/` (or point at any HTTPS URL) and edit `manifest.json`:
 
 ```json
 {
-  "documents": [
+  "stations": [
     {
-      "id": "wi-1042",
-      "title": "Torque Sequence — Front Housing",
-      "station": "Cell 3 / Station B",
-      "rev": "Rev C",
-      "url": "docs/wi-1042.pdf"
+      "name": "Forklift",
+      "documents": [
+        {
+          "id": "wi-1042",
+          "title": "Daily Pre-Shift Inspection",
+          "subtitle": "Class II trucks",
+          "rev": "Rev C",
+          "url": "docs/wi-1042.pdf"
+        }
+      ]
+    },
+    {
+      "name": "Packaging / Shipping",
+      "documents": []
     }
   ]
 }
 ```
 
-- `id` — must be stable and unique; it's the key used to remember reading progress.
-- `station` / `rev` — optional, shown as the subtitle in the library.
+- Stations appear in the order you list them — put the busiest first.
+- `id` — must be stable and unique across the whole file; it's the key used to remember
+  reading progress. Renaming one resets that document's progress for every operator.
+- `subtitle` / `rev` — optional, shown as the grey second line.
 - `url` — relative path or absolute HTTPS URL. If the PDF is on another domain, that
   server must send `Access-Control-Allow-Origin`, otherwise the browser will block it.
+- A station with no documents is hidden rather than shown as a dead end.
 
-Deep link straight into one document with `index.html?doc=wi-1042`.
+Deep links: `index.html?station=Forklift` opens that station, `index.html?doc=wi-1042` jumps
+straight into one document.
+
+The older flat format still loads — a top-level `documents` array is grouped automatically by
+each entry's `station` field — so an existing manifest keeps working without edits.
 
 ## Hosting and loading on the glasses
 
@@ -62,15 +79,21 @@ The Neural Band and the temple touch strip are delivered to the page as arrow ke
 
 | Where | Input | Action |
 | --- | --- | --- |
-| Library | ↑ ↓ | Move between documents |
-| Library | Enter | Open the document |
+| Stations | ↑ ↓ | Move between work stations |
+| Stations | Enter | Open that station's instructions |
+| Documents | ↑ ↓ | Move between documents |
+| Documents | Enter | Open the document |
+| Documents | ↑ from the top | Reach "← All work stations" |
 | Reader | → or ↓ | Next step |
 | Reader | ← or ↑ | Previous step |
 | Reader | Enter | Open the menu |
 | Menu | ↑ ↓ / Enter | Select / confirm |
 
 Menu items: Continue, Jump to step, Text size (Small / Medium / Large), Restart document,
-Back to library.
+Back to *station*, All work stations.
+
+Lists wrap, so the Back item at the top of a document list is always one Up press away from
+the first document — there's no dedicated back gesture on the glasses to rely on.
 
 ## How PDFs become steps
 
@@ -112,7 +135,12 @@ camera, so every action is reachable with four directions and a select.
 
 ## Verification performed
 
-Step extraction was exercised headlessly against four generated work-instruction PDFs
+Step extraction is exercised headlessly against five work-instruction PDFs, including a
+real Word-authored one whose list numbering reaches the text through a tab stop rather than
+a space. The parser asserts that every extracted line is accounted for — no line may be
+silently dropped — which is what caught steps 10 onward disappearing after a section heading.
+
+Earlier coverage: four generated work-instruction PDFs
 (single-page and three-page, numbered and unnumbered, with running headers and page footers),
 asserting: headers and footers stripped, correct step counts, section labels carried across
 page breaks, correct page references, no glued-together words from missed spaces, and
