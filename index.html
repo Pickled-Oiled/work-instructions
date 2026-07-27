@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
+<title>Work Instructions</title>
+<link rel="icon" href="icon-192.png" sizes="192x192">
+<link rel="manifest" href="app.webmanifest">
+<style>
+  :root{
+    --fg:      #ffffff;
+    --dim:     #8fa3b0;
+    --accent:  #00d4ff;
+    --warn:    #ffc043;
+    --ok:      #5ef2a0;
+    --body-size: 30px;
+    --line:    1.35;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html{background:#000;}
+  body{
+    width:600px;height:600px;overflow:hidden;
+    background:#000;color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-weight:500;
+    margin:0 auto;
+    position:relative;
+    user-select:none;
+  }
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;}
+  .screen.active{display:flex;}
+
+  /* ---------- shared chrome ---------- */
+  .topbar{
+    flex:0 0 auto;padding:14px 20px 10px;
+    display:flex;align-items:baseline;gap:10px;
+    font-size:19px;color:var(--dim);letter-spacing:.4px;
+    border-bottom:1px solid #1e2a31;
+  }
+  .topbar .t-main{color:var(--accent);font-weight:700;text-transform:uppercase;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px;}
+  .topbar .t-sub{margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums;}
+
+  .botbar{
+    flex:0 0 auto;padding:10px 20px 16px;border-top:1px solid #1e2a31;
+  }
+  .hint{font-size:17px;color:var(--dim);display:flex;justify-content:space-between;gap:12px;}
+  .hint b{color:var(--fg);font-weight:700;}
+
+  /* ---------- focus ---------- */
+  .focusable{
+    transition:border-color 120ms ease, background 120ms ease;
+    border:2px solid transparent;border-radius:12px;
+    background:#0b1116;color:var(--fg);
+    text-align:left;font:inherit;font-size:26px;
+    padding:16px 18px;min-height:88px;width:100%;
+    display:flex;flex-direction:column;justify-content:center;gap:4px;
+    cursor:pointer;
+  }
+  .focusable:focus{
+    outline:none;border-color:var(--accent);background:#0d1c24;
+    box-shadow:0 0 20px rgba(0,212,255,.35);
+  }
+  .focusable .sub{font-size:19px;color:var(--dim);font-weight:500;}
+  .focusable:focus .sub{color:#bcd6e2;}
+
+  /* ---------- library ---------- */
+  #libList{
+    flex:1 1 auto;overflow:hidden;padding:12px 18px;
+    display:flex;flex-direction:column;gap:10px;
+    scroll-behavior:smooth;overflow-y:auto;scrollbar-width:none;
+  }
+  #libList::-webkit-scrollbar{display:none;}
+  .badge{
+    display:inline-block;font-size:16px;font-weight:700;letter-spacing:.6px;
+    color:#000;background:var(--accent);border-radius:6px;padding:2px 8px;margin-right:8px;
+    vertical-align:middle;
+  }
+  .badge.done{background:var(--ok);}
+  .badge.wip{background:var(--warn);}
+
+  /* ---------- reader ---------- */
+  #cardWrap{
+    flex:1 1 auto;position:relative;padding:16px 22px 8px;overflow:hidden;
+    display:flex;flex-direction:column;
+  }
+  #stepHead{
+    flex:0 0 auto;display:flex;align-items:center;gap:12px;margin-bottom:10px;
+  }
+  #stepNum{
+    font-size:34px;font-weight:800;color:var(--accent);line-height:1;
+    font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  #stepSection{
+    font-size:19px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  #cardBody{
+    flex:1 1 auto;overflow:hidden;
+    font-size:var(--body-size);line-height:var(--line);
+    word-wrap:break-word;overflow-wrap:break-word;
+  }
+  #cardBody p{margin:0 0 .5em 0;}
+  #cardBody p.b::before{content:"• ";color:var(--accent);}
+  #cardBody .caution{color:var(--warn);font-weight:700;}
+  #progWrap{flex:0 0 auto;height:6px;background:#16242c;border-radius:3px;margin:8px 0 0;}
+  #progBar{height:100%;background:var(--accent);border-radius:3px;width:0;transition:width 160ms ease;}
+
+  /* ---------- overlay menus ---------- */
+  #overlay{
+    position:absolute;inset:0;background:#000;display:none;flex-direction:column;z-index:20;
+  }
+  #overlay.active{display:flex;}
+  #ovList{flex:1 1 auto;padding:12px 18px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;scrollbar-width:none;scroll-behavior:smooth;}
+  #ovList::-webkit-scrollbar{display:none;}
+
+  /* ---------- status / loading ---------- */
+  #status{
+    position:absolute;inset:0;background:#000;z-index:30;display:none;
+    flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:40px;text-align:center;
+  }
+  #status.active{display:flex;}
+  #statusMsg{font-size:26px;line-height:1.35;}
+  #statusSub{font-size:19px;color:var(--dim);line-height:1.4;}
+  .spin{
+    width:54px;height:54px;border:5px solid #17323d;border-top-color:var(--accent);
+    border-radius:50%;animation:sp 900ms linear infinite;
+  }
+  @keyframes sp{to{transform:rotate(360deg);}}
+  .err{color:var(--warn);}
+
+  /* offscreen text measurer — matches #cardBody metrics exactly */
+  #measure{
+    position:absolute;left:-9999px;top:0;visibility:hidden;
+    font-size:var(--body-size);line-height:var(--line);
+    word-wrap:break-word;overflow-wrap:break-word;
+  }
+  #measure p{margin:0 0 .5em 0;}
+  #measure p.b::before{content:"• ";}
+</style>
+</head>
+<body>
+
+<!-- ============== LIBRARY ============== -->
+<section id="scrLibrary" class="screen active">
+  <div class="topbar">
+    <span class="t-main">Work Instructions</span>
+    <span class="t-sub" id="libCount"></span>
+  </div>
+  <div id="libList"></div>
+  <div class="botbar">
+    <div class="hint"><span><b>↑↓</b> browse</span><span><b>Enter</b> open</span></div>
+  </div>
+</section>
+
+<!-- ============== READER ============== -->
+<section id="scrReader" class="screen">
+  <div class="topbar">
+    <span class="t-main" id="docTitle"></span>
+    <span class="t-sub" id="pageRef"></span>
+  </div>
+  <div id="cardWrap">
+    <div id="stepHead">
+      <span id="stepNum"></span>
+      <span id="stepSection"></span>
+    </div>
+    <div id="cardBody"></div>
+    <div id="progWrap"><div id="progBar"></div></div>
+  </div>
+  <div class="botbar">
+    <div class="hint">
+      <span><b>←→</b> step</span>
+      <span id="stepCount"></span>
+      <span><b>Enter</b> menu</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============== OVERLAY (menu / jump list) ============== -->
+<div id="overlay">
+  <div class="topbar"><span class="t-main" id="ovTitle">Menu</span><span class="t-sub" id="ovSub"></span></div>
+  <div id="ovList"></div>
+  <div class="botbar">
+    <div class="hint"><span><b>↑↓</b> select</span><span><b>Enter</b> confirm</span></div>
+  </div>
+</div>
+
+<!-- ============== STATUS ============== -->
+<div id="status" class="active">
+  <div class="spin" id="statusSpin"></div>
+  <div id="statusMsg">Loading library…</div>
+  <div id="statusSub"></div>
+</div>
+
+<div id="measure"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+/* =========================================================================
+   Work Instructions viewer for Meta Ray-Ban Display
+   - 600x600 fixed viewport, additive display (black = transparent)
+   - Input: ArrowUp/Down/Left/Right + Enter only (Neural Band / cap touch)
+   - PDF text is extracted with pdf.js and reflowed into large-type step cards
+   ========================================================================= */
+'use strict';
+
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+var TEXT_SIZES = [26, 30, 36];
+var TEXT_LABELS = ['Small', 'Medium', 'Large'];
+
+var state = {
+  manifest: [],
+  doc: null,        // active manifest entry
+  cards: [],        // paginated cards for active doc
+  steps: [],        // logical steps (for jump list)
+  idx: 0,
+  screen: 'library',
+  overlay: null,    // null | 'menu' | 'jump'
+  sizeIdx: 1
+};
+
+/* ---------------------------- helpers ---------------------------- */
+var $ = function (id) { return document.getElementById(id); };
+
+function showStatus(msg, sub, isError) {
+  $('statusMsg').textContent = msg;
+  $('statusMsg').className = isError ? 'err' : '';
+  $('statusSub').textContent = sub || '';
+  $('statusSpin').style.display = isError ? 'none' : 'block';
+  $('status').classList.add('active');
+}
+function hideStatus() { $('status').classList.remove('active'); }
+
+function setScreen(name) {
+  state.screen = name;
+  $('scrLibrary').classList.toggle('active', name === 'library');
+  $('scrReader').classList.toggle('active', name === 'reader');
+}
+
+function storeKey(id) { return 'wi:' + id; }
+function saveProgress() {
+  if (!state.doc) return;
+  try {
+    localStorage.setItem(storeKey(state.doc.id), JSON.stringify({
+      idx: state.idx, total: state.cards.length, t: Date.now()
+    }));
+  } catch (e) { /* storage full / disabled — non-fatal */ }
+}
+function readProgress(id) {
+  try { return JSON.parse(localStorage.getItem(storeKey(id)) || 'null'); }
+  catch (e) { return null; }
+}
+function loadPrefs() {
+  try {
+    var s = parseInt(localStorage.getItem('wi:textSize'), 10);
+    if (s >= 0 && s < TEXT_SIZES.length) state.sizeIdx = s;
+  } catch (e) {}
+  applyTextSize();
+}
+function applyTextSize() {
+  document.documentElement.style.setProperty('--body-size', TEXT_SIZES[state.sizeIdx] + 'px');
+}
+
+/* ---------------------- focus / d-pad plumbing -------------------- */
+function focusables() {
+  var root = state.overlay ? $('ovList')
+           : state.screen === 'library' ? $('libList') : null;
+  if (!root) return [];
+  return Array.prototype.slice.call(
+    root.querySelectorAll('.focusable:not([disabled]):not(.hidden)')
+  );
+}
+function moveFocus(dir) {
+  var f = focusables();
+  if (!f.length) return;
+  var i = f.indexOf(document.activeElement);
+  if (i === -1) { f[0].focus(); f[0].scrollIntoView({ block: 'nearest' }); return; }
+  var n = (dir === 'prev')
+    ? (i > 0 ? i - 1 : f.length - 1)
+    : (i < f.length - 1 ? i + 1 : 0);
+  f[n].focus();
+  f[n].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+document.addEventListener('keydown', function (e) {
+  var k = e.key;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Escape'].indexOf(k) === -1) return;
+  e.preventDefault();
+
+  if ($('status').classList.contains('active')) {
+    // Only Enter dismisses an error card.
+    if (k === 'Enter' && $('statusSpin').style.display === 'none') { hideStatus(); renderLibrary(); setScreen('library'); }
+    return;
+  }
+
+  if (state.overlay) {
+    if (k === 'ArrowUp' || k === 'ArrowLeft')  return moveFocus('prev');
+    if (k === 'ArrowDown' || k === 'ArrowRight') return moveFocus('next');
+    if (k === 'Enter') { if (document.activeElement && document.activeElement.click) document.activeElement.click(); return; }
+    if (k === 'Escape') { closeOverlay(); return; }
+    return;
+  }
+
+  if (state.screen === 'library') {
+    if (k === 'ArrowUp' || k === 'ArrowLeft')  return moveFocus('prev');
+    if (k === 'ArrowDown' || k === 'ArrowRight') return moveFocus('next');
+    if (k === 'Enter') { if (document.activeElement && document.activeElement.click) document.activeElement.click(); return; }
+    return;
+  }
+
+  // reader
+  if (k === 'ArrowRight' || k === 'ArrowDown') return step(1);
+  if (k === 'ArrowLeft'  || k === 'ArrowUp')   return step(-1);
+  if (k === 'Enter')  return openMenu();
+  if (k === 'Escape') return backToLibrary();
+});
+
+/* ---------------------------- library ---------------------------- */
+function progressBadge(entry) {
+  var p = readProgress(entry.id);
+  if (!p || !p.total) return '';
+  if (p.idx >= p.total - 1) return '<span class="badge done">DONE</span>';
+  if (p.idx > 0) return '<span class="badge wip">' + Math.round((p.idx / p.total) * 100) + '%</span>';
+  return '';
+}
+
+function renderLibrary() {
+  var list = $('libList');
+  list.innerHTML = '';
+  $('libCount').textContent = state.manifest.length + ' doc' + (state.manifest.length === 1 ? '' : 's');
+
+  state.manifest.forEach(function (entry) {
+    var b = document.createElement('button');
+    b.className = 'focusable';
+    b.type = 'button';
+    var sub = [entry.station, entry.rev].filter(Boolean).join(' · ');
+    b.innerHTML = progressBadge(entry) + '<span>' + escapeHtml(entry.title) + '</span>' +
+                  (sub ? '<span class="sub">' + escapeHtml(sub) + '</span>' : '');
+    b.addEventListener('click', function () { openDoc(entry); });
+    list.appendChild(b);
+  });
+
+  var first = list.querySelector('.focusable');
+  if (first) first.focus();
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* -------------------- PDF -> lines -> steps ---------------------- */
+function extractLines(textContent, pageNum, pageHeight) {
+  var rows = [];
+  textContent.items.forEach(function (it) {
+    if (!it.str || !it.str.trim()) return;
+    var x = it.transform[4], y = it.transform[5];
+    var size = Math.abs(it.transform[3]) || it.height || 10;
+    var row = null;
+    for (var i = 0; i < rows.length; i++) {
+      if (Math.abs(rows[i].y - y) <= Math.max(2, size * 0.4)) { row = rows[i]; break; }
+    }
+    if (!row) { row = { y: y, size: size, items: [] }; rows.push(row); }
+    if (size > row.size) row.size = size;
+    row.items.push({ x: x, str: it.str, w: it.width || 0, size: size });
+  });
+
+  rows.sort(function (a, b) { return b.y - a.y; });
+  rows.forEach(function (r) {
+    r.items.sort(function (a, b) { return a.x - b.x; });
+    var text = '', prevEnd = null;
+    r.items.forEach(function (it) {
+      if (prevEnd !== null && it.x - prevEnd > it.size * 0.16 && !/\s$/.test(text) && !/^\s/.test(it.str)) text += ' ';
+      text += it.str;
+      prevEnd = it.x + it.w;
+    });
+    r.text = text.replace(/\s+/g, ' ').trim();
+    r.page = pageNum;
+    r.ph = pageHeight || 792;
+    r.x = r.items.length ? r.items[0].x : 0;
+  });
+  return rows.filter(function (r) { return r.text.length > 0; });
+}
+
+// Drop running headers/footers, bare page numbers, and small margin-band text.
+function stripBoilerplate(pages, medianSize) {
+  var counts = {}, total = pages.length;
+  pages.forEach(function (lines) {
+    var seen = {};
+    lines.forEach(function (l) {
+      var k = l.text.toLowerCase();
+      if (seen[k]) return;
+      seen[k] = 1;
+      counts[k] = (counts[k] || 0) + 1;
+    });
+  });
+  var repeatThreshold = Math.max(2, Math.ceil(total * 0.6));
+  return pages.map(function (lines) {
+    return lines.filter(function (l) {
+      var t = l.text.trim();
+      if (/^page\s+\d+(\s*(of|\/)\s*\d+)?$/i.test(t)) return false;
+      if (/^\d{1,3}$/.test(t) && total > 1) return false;
+      if (total >= 3 && counts[t.toLowerCase()] >= repeatThreshold && t.length < 90) return false;
+      // Small type sitting in the top/bottom margin band is chrome, not content.
+      if (medianSize && l.size <= medianSize * 0.92 &&
+          (l.y > l.ph * 0.93 || l.y < l.ph * 0.07)) return false;
+      return true;
+    });
+  });
+}
+
+// Word/InDesign list numbering often reaches the text via a tab stop rather than a space
+// glyph, so "10.Carefully" arrives with nothing between the period and the text. Accept a
+// missing space only when a letter follows, which still rejects decimals like "12.5 Nm".
+var STEP_RE  = /^(?:step\s*)?(\d{1,3})\s*[.)\]:-](?:\s+|(?=[A-Za-z]))(.*)$/i;
+var STEP_RE2 = /^step\s+(\d{1,3})\b[\s.:)-]*(.*)$/i;
+var BULLET_RE = /^[•▪●·◦*–—-]\s+(.*)$/;
+var CAUTION_RE = /^\s*(warning|caution|danger|note|important|nota|attention)\b[:!]?/i;
+
+function detectSteps(lines, medianSize) {
+  var steps = [], expected = 1, cur = null, consumed = 0;
+  var currentSection = '';
+  var headingSize = medianSize * 1.18;
+
+  function open(num, text, line) {
+    cur = { num: num, page: line.page, section: currentSection, body: [] };
+    if (text) cur.body.push(text);
+    steps.push(cur);
+  }
+
+  lines.forEach(function (l) {
+    var t = l.text;
+    var m = STEP_RE2.exec(t) || STEP_RE.exec(t);
+    if (m) {
+      var n = parseInt(m[1], 10);
+      if (n === expected || (n > expected && n <= expected + 2) || (n === 1 && !steps.length)) {
+        expected = n + 1;
+        open(n, m[2] ? m[2].trim() : '', l);
+        consumed++;
+        return;
+      }
+    }
+    // Section heading: larger type, short, not a step.
+    if (l.size >= headingSize && t.length <= 70) {
+      currentSection = t.replace(/[:\s]+$/, '');
+      cur = null; // the heading ends the current step's flow
+      consumed++;
+      return;
+    }
+    // Body text with no step open (intro prose, or a step whose marker we failed to parse)
+    // becomes its own unnumbered card rather than being silently dropped.
+    if (!cur) open(null, '', l);
+    var bm = BULLET_RE.exec(t);
+    cur.body.push(bm ? '• ' + bm[1].trim() : t);
+    consumed++;
+  });
+
+  return { steps: steps, consumed: consumed };
+}
+
+// Fallback when a PDF has no numbered steps: chunk by vertical gaps.
+function detectParagraphs(lines, medianSize) {
+  var blocks = [], cur = null, prev = null, currentSection = '';
+  var headingSize = medianSize * 1.18;
+
+  lines.forEach(function (l) {
+    var t = l.text;
+    if (l.size >= headingSize && t.length <= 70) {
+      currentSection = t.replace(/[:\s]+$/, '');
+      cur = null;
+      return;
+    }
+    var bigGap = prev && (prev.page !== l.page || (prev.y - l.y) > l.size * 2.0);
+    if (!cur || bigGap) {
+      cur = { num: blocks.length + 1, page: l.page, section: currentSection, body: [] };
+      blocks.push(cur);
+    }
+    var bm = BULLET_RE.exec(t);
+    cur.body.push(bm ? '• ' + bm[1].trim() : t);
+    prev = l;
+  });
+  return blocks.filter(function (b) { return b.body.join(' ').trim().length > 1; });
+}
+
+// Join wrapped lines back into paragraphs.
+function reflow(bodyLines) {
+  var paras = [], buf = '';
+  function flush() { if (buf.trim()) paras.push(buf.trim()); buf = ''; }
+  bodyLines.forEach(function (line) {
+    if (/^•\s/.test(line)) { flush(); paras.push(line); return; }
+    if (!buf) { buf = line; return; }
+    if (/[.:;!?]$/.test(buf)) { flush(); buf = line; return; }
+    buf = buf.replace(/-$/, '') + (/-$/.test(buf) ? '' : ' ') + line;
+  });
+  flush();
+  return paras;
+}
+
+/* --------------- measured pagination into 600px cards ------------- */
+function paraHtml(p) {
+  var bullet = /^•\s/.test(p);
+  var text = bullet ? p.replace(/^•\s/, '') : p;
+  var cls = bullet ? 'b' : '';
+  if (CAUTION_RE.test(text)) cls += ' caution';
+  return '<p class="' + cls.trim() + '">' + escapeHtml(text) + '</p>';
+}
+
+function paginate(steps) {
+  var m = $('measure');
+  var body = $('cardBody');
+  m.style.width = body.clientWidth + 'px';
+  var maxH = body.clientHeight;
+  var cards = [];
+
+  steps.forEach(function (st, si) {
+    var paras = reflow(st.body);
+    if (!paras.length) paras = ['(no text on this step)'];
+    var chunk = [], parts = [];
+
+    function commit() { if (chunk.length) { parts.push(chunk.slice()); chunk = []; } }
+
+    paras.forEach(function (p) {
+      chunk.push(p);
+      m.innerHTML = chunk.map(paraHtml).join('');
+      if (m.offsetHeight > maxH && chunk.length > 1) {
+        chunk.pop(); commit(); chunk = [p];
+        m.innerHTML = paraHtml(p);
+      }
+      // A single paragraph taller than the card: hard-split on sentences.
+      if (m.offsetHeight > maxH && chunk.length === 1) {
+        var sentences = p.match(/[^.!?]+[.!?]*\s*/g) || [p];
+        var acc = '';
+        chunk = [];
+        sentences.forEach(function (s) {
+          var trial = acc + s;
+          m.innerHTML = paraHtml(trial);
+          if (m.offsetHeight > maxH && acc) { parts.push([acc.trim()]); acc = s; }
+          else { acc = trial; }
+        });
+        if (acc.trim()) chunk = [acc.trim()];
+      }
+    });
+    commit();
+
+    parts.forEach(function (partParas, pi) {
+      cards.push({
+        stepIndex: si,
+        num: st.num,
+        section: st.section,
+        page: st.page,
+        part: pi + 1,
+        parts: parts.length,
+        html: partParas.map(paraHtml).join('')
+      });
+    });
+  });
+  m.innerHTML = '';
+  return cards;
+}
+
+/* ---------------------------- reader ----------------------------- */
+function openDoc(entry) {
+  showStatus('Opening…', entry.title);
+  state.doc = entry;
+  setScreen('reader');
+
+  loadPdfSteps(entry.url).then(function (steps) {
+    state.steps = steps;
+    state.cards = paginate(steps);
+    if (!state.cards.length) throw new Error('No readable text found in this PDF. It may be a scan without an OCR text layer.');
+
+    var p = readProgress(entry.id);
+    state.idx = (p && p.idx > 0 && p.idx < state.cards.length) ? p.idx : 0;
+    hideStatus();
+    if (p && p.idx > 0 && p.idx < state.cards.length) openMenu(true);
+    else render();
+  }).catch(function (err) {
+    showStatus('Could not open document', (err && err.message ? err.message : String(err)) + '\n\nPress Enter to go back.', true);
+  });
+}
+
+function loadPdfSteps(url) {
+  if (!window.pdfjsLib) return Promise.reject(new Error('pdf.js failed to load. Check the network connection.'));
+  return pdfjsLib.getDocument({ url: url, isEvalSupported: false }).promise.then(function (pdf) {
+    var jobs = [];
+    for (var p = 1; p <= pdf.numPages; p++) {
+      jobs.push((function (n) {
+        return pdf.getPage(n).then(function (page) {
+          var h = page.getViewport({ scale: 1 }).height;
+          return page.getTextContent().then(function (tc) { return extractLines(tc, n, h); });
+        });
+      })(p));
+    }
+    return Promise.all(jobs);
+  }).then(function (pages) {
+    var all = [];
+    pages.forEach(function (pl) { all = all.concat(pl); });
+    if (!all.length) throw new Error('No text layer found. This PDF is likely a scanned image — run OCR on it first.');
+
+    var sizes = all.map(function (l) { return l.size; }).sort(function (a, b) { return a - b; });
+    var median = sizes[Math.floor(sizes.length / 2)] || 10;
+
+    pages = stripBoilerplate(pages, median);
+    var lines = [];
+    pages.forEach(function (pl) { lines = lines.concat(pl); });
+    if (!lines.length) throw new Error('No body text found after removing headers and footers.');
+
+    var res = detectSteps(lines, median);
+    var numbered = res.steps.filter(function (s) { return s.num !== null; }).length;
+    // Fall back to paragraph blocks only if numbering genuinely isn't the document's structure.
+    if (numbered < 2 || numbered < res.steps.length * 0.5) return detectParagraphs(lines, median);
+    return res.steps;
+  });
+}
+
+function render() {
+  var c = state.cards[state.idx];
+  if (!c) return;
+  $('docTitle').textContent = state.doc.title;
+  $('pageRef').textContent = 'p' + c.page;
+  $('stepNum').textContent = (c.num == null ? '' : c.num + '.') +
+                             (c.parts > 1 ? (c.num == null ? '' : '  ') + c.part + '/' + c.parts : '');
+  $('stepSection').textContent = c.section || '';
+  $('cardBody').innerHTML = c.html;
+  $('progBar').style.width = (((state.idx + 1) / state.cards.length) * 100) + '%';
+  $('stepCount').innerHTML = '<b>' + (state.idx + 1) + '</b> / ' + state.cards.length;
+  saveProgress();
+}
+
+function step(delta) {
+  var n = state.idx + delta;
+  if (n < 0 || n >= state.cards.length) {
+    // Edge feedback: flash the progress bar rather than wrapping silently.
+    var bar = $('progBar');
+    bar.style.background = '#ffc043';
+    setTimeout(function () { bar.style.background = 'var(--accent)'; }, 180);
+    return;
+  }
+  state.idx = n;
+  render();
+}
+
+function backToLibrary() {
+  saveProgress();
+  state.doc = null; state.cards = []; state.steps = [];
+  closeOverlay();
+  setScreen('library');
+  renderLibrary();
+}
+
+/* ---------------------------- overlay ---------------------------- */
+function ovButton(label, sub, fn) {
+  var b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'focusable';
+  b.innerHTML = '<span>' + escapeHtml(label) + '</span>' +
+                (sub ? '<span class="sub">' + escapeHtml(sub) + '</span>' : '');
+  b.addEventListener('click', fn);
+  return b;
+}
+
+function openOverlay(title, sub, buttons, focusIdx) {
+  state.overlay = title;
+  $('ovTitle').textContent = title;
+  $('ovSub').textContent = sub || '';
+  var list = $('ovList');
+  list.innerHTML = '';
+  buttons.forEach(function (b) { list.appendChild(b); });
+  $('overlay').classList.add('active');
+  var f = focusables();
+  var t = f[focusIdx || 0] || f[0];
+  if (t) { t.focus(); t.scrollIntoView({ block: 'nearest' }); }
+}
+
+function closeOverlay() {
+  state.overlay = null;
+  $('overlay').classList.remove('active');
+  if (state.screen === 'reader') render();
+}
+
+function openMenu(isResumePrompt) {
+  var btns = [];
+  if (isResumePrompt) {
+    var c = state.cards[state.idx];
+    btns.push(ovButton('Resume', 'Step ' + (state.idx + 1) + ' of ' + state.cards.length +
+      (c && c.section ? ' · ' + c.section : ''), function () { closeOverlay(); }));
+    btns.push(ovButton('Start from the beginning', '', function () {
+      state.idx = 0; closeOverlay();
+    }));
+    openOverlay('Menu', state.doc.title, btns, 0);
+    return;
+  }
+
+  btns.push(ovButton('Continue', 'Step ' + (state.idx + 1) + ' of ' + state.cards.length, function () { closeOverlay(); }));
+  btns.push(ovButton('Jump to step', state.steps.length + ' steps', openJump));
+  btns.push(ovButton('Text size: ' + TEXT_LABELS[state.sizeIdx], 'Enter to cycle', function () {
+    state.sizeIdx = (state.sizeIdx + 1) % TEXT_SIZES.length;
+    try { localStorage.setItem('wi:textSize', String(state.sizeIdx)); } catch (e) {}
+    applyTextSize();
+    // Re-paginate at the new size, keeping the reader on the same step.
+    var curStep = state.cards[state.idx] ? state.cards[state.idx].stepIndex : 0;
+    state.cards = paginate(state.steps);
+    state.idx = Math.max(0, state.cards.findIndex(function (c) { return c.stepIndex === curStep; }));
+    closeOverlay(); openMenu();
+  }));
+  btns.push(ovButton('Restart document', 'Clear progress', function () {
+    state.idx = 0; saveProgress(); closeOverlay();
+  }));
+  btns.push(ovButton('Back to library', '', backToLibrary));
+  openOverlay('Menu', state.doc.title, btns, 0);
+}
+
+function openJump() {
+  var btns = [], focusIdx = 0;
+  var seen = {};
+  state.cards.forEach(function (c, i) {
+    if (seen[c.stepIndex]) return;
+    seen[c.stepIndex] = 1;
+    if (c.stepIndex === (state.cards[state.idx] || {}).stepIndex) focusIdx = btns.length;
+    var preview = c.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 44);
+    btns.push(ovButton(c.num == null ? (c.section || 'Notes') : 'Step ' + c.num, preview, (function (target) {
+      return function () { state.idx = target; closeOverlay(); };
+    })(i)));
+  });
+  openOverlay('Jump to step', state.doc.title, btns, focusIdx);
+}
+
+/* ---------------------------- boot ------------------------------- */
+function boot() {
+  loadPrefs();
+  fetch('manifest.json', { cache: 'no-cache' })
+    .then(function (r) {
+      if (!r.ok) throw new Error('manifest.json returned HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function (data) {
+      var docs = Array.isArray(data) ? data : (data.documents || []);
+      docs = docs.filter(function (d) { return d && d.url; });
+      docs.forEach(function (d, i) { if (!d.id) d.id = 'doc' + i; });
+      if (!docs.length) throw new Error('manifest.json contains no documents.');
+      state.manifest = docs;
+
+      hideStatus();
+      setScreen('library');
+      renderLibrary();
+
+      // Optional deep link: index.html?doc=<id>
+      var q = new URLSearchParams(location.search).get('doc');
+      if (q) {
+        var hit = docs.filter(function (d) { return d.id === q; })[0];
+        if (hit) openDoc(hit);
+      }
+    })
+    .catch(function (err) {
+      showStatus('Library unavailable', (err && err.message ? err.message : String(err)) +
+        '\n\nCheck that manifest.json sits next to index.html and is served over HTTPS.', true);
+    });
+}
+
+window.addEventListener('load', boot);
+</script>
+</body>
+</html>
